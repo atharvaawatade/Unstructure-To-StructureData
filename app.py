@@ -1,20 +1,20 @@
 import re
 import streamlit as st
-import pandas as pd
 import json
 
 # Precompile regex patterns
-patient_id_pattern = re.compile(r"Patient ID:\s*(\d+)")
 age_pattern = re.compile(r"Age:\s*(\d+)")
 gender_pattern = re.compile(r"Gender:\s*(\w+)")
+name_pattern = re.compile(r"Patient Name:\s*([\w]+)")
 
-def extract_patient_id(text):
-    match = patient_id_pattern.search(text)
-    return match.group(1) if match else ""
+
+def extract_name(text):
+    match = name_pattern.search(text)
+    return match.group(1).strip() if match else ""
 
 def extract_age(text):
     match = age_pattern.search(text)
-    return match.group(1) if match else ""
+    return int(match.group(1)) if match else None
 
 def extract_gender(text):
     match = gender_pattern.search(text)
@@ -24,16 +24,16 @@ def extract_diagnosis(text):
     diagnosis = {}
     cancer_type_match = re.search(r"prostate cancer", text, re.IGNORECASE)
     if cancer_type_match:
-        diagnosis["Cancer Type"] = "Prostate Cancer"
+        diagnosis["cancerType"] = "Prostate Cancer"
     diagnosis_date_match = re.search(r"diagnosed with prostate cancer in ([\w\s]+ \d{4})", text)
     if diagnosis_date_match:
-        diagnosis["Diagnosis Date"] = diagnosis_date_match.group(1)
+        diagnosis["diagnosisDate"] = diagnosis_date_match.group(1)
     gleason_score_match = re.search(r"Gleason score was (\d+)", text)
     if gleason_score_match:
-        diagnosis["Gleason Score"] = gleason_score_match.group(1)
+        diagnosis["gleason_score"] = int(gleason_score_match.group(1))  # Convert to int for JSON
     pathologic_stage_match = re.search(r"pathologic stage at diagnosis was (pT\w+)", text, re.IGNORECASE)
     if pathologic_stage_match:
-        diagnosis["Pathologic Stage"] = pathologic_stage_match.group(1)
+        diagnosis["pathologicStage"] = pathologic_stage_match.group(1)
     return diagnosis
 
 def extract_medical_history(text):
@@ -86,10 +86,10 @@ def extract_lab_results(text):
     results = []
     lab_result_matches = re.findall(r"PSA levels of ([\d\.]+) ng/mL as of ([\w\s]+ \d{4})", text)
     for match in lab_result_matches:
-        results.append({"test": "PSA levels", "date": match[1], "value": match[0], "unit": "ng/mL"})
+        results.append({"test": "PSA levels", "date": match[1], "value": float(match[0]), "unit": "ng/mL"})  # Convert value to float for JSON
     cbc_match = re.search(r"Complete blood count from ([\w\s]+ \d{4}) showed WBC: ([\d\.]+), RBC: ([\d\.]+), Platelets: (\d+)", text)
     if cbc_match:
-        results.append({"test": "Complete blood count", "date": cbc_match.group(1), "value": {"wbc": cbc_match.group(2), "rbc": cbc_match.group(3), "platelets": cbc_match.group(4)}})
+        results.append({"test": "Complete blood count", "date": cbc_match.group(1), "value": {"wbc": float(cbc_match.group(2)), "rbc": float(cbc_match.group(3)), "platelets": int(cbc_match.group(4))}})
     return results
 
 def extract_imaging_studies(text):
@@ -107,14 +107,18 @@ def extract_medications(text):
     return medications
 
 def process_input(text):
+    name = extract_name(text)
+    age = extract_age(text)
+    gender = extract_gender(text)
     diagnosis = extract_diagnosis(text)
     structured_data = {
-        "age": extract_age(text),
-        "gender": extract_gender(text),
-        "cancerType": diagnosis.get("Cancer Type", ""),
-        "diagnosisDate": diagnosis.get("Diagnosis Date", ""),
-        "gleason_score": diagnosis.get("Gleason Score", ""),
-        "pathologicStage": diagnosis.get("Pathologic Stage", ""),
+        "name": name,
+        "age": age,
+        "gender": gender,
+        "cancerType": diagnosis.get("cancerType", ""),
+        "diagnosisDate": diagnosis.get("diagnosisDate", ""),
+        "gleason_score": int(diagnosis.get("gleason_score", "")),  # Convert to int for JSON
+        "pathologicStage": diagnosis.get("pathologicStage", ""),
         "comorbidities": extract_medical_history(text),
         "diseaseStates": extract_disease_states(text),
         "procedures": extract_procedures(text),
