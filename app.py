@@ -54,9 +54,9 @@ def extract_disease_states(text):
     post_prostatectomy_match = re.search(r"post-prostatectomy state until ([\w\s]+ \d{4})", text)
     if post_prostatectomy_match:
         states.append({"state": "post-prostatectomy state", "endDate": post_prostatectomy_match.group(1)})
-    adjuvant_treatment_match = re.search(r"Adjuvant treatment with ([\w\s]+) commenced in ([\w\s]+ \d{4}) and concluded in ([\w\s]+ \d{4})", text)
-    if adjuvant_treatment_match:
-        states.append({"state": "adjuvant treatment", "startDate": adjuvant_treatment_match.group(2), "endDate": adjuvant_treatment_match.group(3)})
+    adjuvant_treatments_match = re.search(r"Adjuvant treatments with ([\w\s]+) commenced in ([\w\s]+ \d{4}) and concluded in ([\w\s]+ \d{4})", text)
+    if adjuvant_treatments_match:
+        states.append({"state": "adjuvant treatments", "startDate": adjuvant_treatments_match.group(2), "endDate": adjuvant_treatments_match.group(3)})
     biochemical_recurrence_match = re.search(r"biochemical recurrence detected in ([\w\s]+ \d{4})", text)
     if biochemical_recurrence_match:
         states.append({"state": "biochemical recurrence", "startDate": biochemical_recurrence_match.group(1)})
@@ -69,18 +69,18 @@ def extract_procedures(text):
         procedures.append({"type": match[0], "date": match[1], "description": match[0]})
     return procedures
 
-def extract_treatments(text):
-    treatments = []
-    treatment_matches = re.findall(r"([A-Za-z\s]+) therapy commenced in ([\w\s]+ \d{4}) and concluded in ([\w\s]+ \d{4})", text)
-    for match in treatment_matches:
-        treatments.append({"type": match[0] + " therapy", "start_date": match[1], "end_date": match[2]})
+def extract_treatmentss(text):
+    treatmentss = []
+    treatments_matches = re.findall(r"([A-Za-z\s]+) therapy commenced in ([\w\s]+ \d{4}) and concluded in ([\w\s]+ \d{4})", text)
+    for match in treatments_matches:
+        treatmentss.append({"type": match[0] + " therapy", "start_date": match[1], "end_date": match[2]})
     hormonal_therapy_matches = re.findall(r"hormonal therapy with ([\w\s]+) injections every 3 months until ([\w\s]+ \d{4})", text)
     for match in hormonal_therapy_matches:
-        treatments.append({"type": "hormonal therapy", "end_date": match[1], "description": match[0] + " injections every 3 months"})
-    current_treatment_match = re.search(r"Current treatment includes second-line hormonal therapy with ([\w\s]+)", text)
-    if current_treatment_match:
-        treatments.append({"type": "second-line hormonal therapy", "description": current_treatment_match.group(1)})
-    return treatments
+        treatmentss.append({"type": "hormonal therapy", "end_date": match[1], "description": match[0] + " injections every 3 months"})
+    current_treatments_match = re.search(r"Current treatments includes second-line hormonal therapy with ([\w\s]+)", text)
+    if current_treatments_match:
+        treatmentss.append({"type": "second-line hormonal therapy", "description": current_treatments_match.group(1)})
+    return treatmentss
 
 def extract_lab_results(text):
     results = []
@@ -122,7 +122,7 @@ def process_input(text):
         "comorbidities": extract_medical_history(text),
         "diseaseStates": extract_disease_states(text),
         "procedures": extract_procedures(text),
-        "treatment": extract_treatments(text),
+        "treatments": extract_treatmentss(text),
         "labResults": extract_lab_results(text),
         "imagingStudies": extract_imaging_studies(text),
         "medications": extract_medications(text)
