@@ -2,23 +2,28 @@ import re
 import streamlit as st
 import pandas as pd
 
+# Precompile regex patterns
+patient_id_pattern = re.compile(r"Patient ID:\s*(\d+)")
+age_pattern = re.compile(r"Age:\s*(\d+)")
+gender_pattern = re.compile(r"Gender:\s*(\w+)")
+
 def extract_patient_id(text):
-    match = re.search(r"Patient ID:\s*(\d+)", text)
+    match = patient_id_pattern.search(text)
     return match.group(1) if match else ""
 
 def extract_age(text):
-    match = re.search(r"Age:\s*(\d+)", text)
+    match = age_pattern.search(text)
     return match.group(1) if match else ""
 
 def extract_gender(text):
-    match = re.search(r"Gender:\s*(\w+)", text)
+    match = gender_pattern.search(text)
     return match.group(1) if match else ""
 
 def extract_diagnosis(text):
     diagnosis = {}
     cancer_type_match = re.search(r"prostate cancer", text, re.IGNORECASE)
     if cancer_type_match:
-        diagnosis["Cancer Type"] = "prostate cancer"
+        diagnosis["Cancer Type"] = "Prostate Cancer"
     diagnosis_date_match = re.search(r"diagnosed with prostate cancer in ([\w\s]+ \d{4})", text)
     if diagnosis_date_match:
         diagnosis["Diagnosis Date"] = diagnosis_date_match.group(1)
@@ -44,36 +49,36 @@ def extract_disease_states(text):
     states = []
     disease_state_matches = re.findall(r"The disease progressed to ([\w\s]+) until ([\w\s]+ \d{4})", text)
     for match in disease_state_matches:
-        states.append({"Disease State": match[0], "Start Date": "", "End Date": match[1]})
+        states.append({"Disease State": match[0], "End Date": match[1]})
     post_prostatectomy_match = re.search(r"post-prostatectomy state until ([\w\s]+ \d{4})", text)
     if post_prostatectomy_match:
-        states.append({"Disease State": "post-prostatectomy state", "Start Date": "", "End Date": post_prostatectomy_match.group(1)})
+        states.append({"Disease State": "post-prostatectomy state", "End Date": post_prostatectomy_match.group(1)})
     adjuvant_treatment_match = re.search(r"Adjuvant treatment with ([\w\s]+) commenced in ([\w\s]+ \d{4}) and concluded in ([\w\s]+ \d{4})", text)
     if adjuvant_treatment_match:
         states.append({"Disease State": "adjuvant treatment", "Start Date": adjuvant_treatment_match.group(2), "End Date": adjuvant_treatment_match.group(3)})
     biochemical_recurrence_match = re.search(r"biochemical recurrence detected in ([\w\s]+ \d{4})", text)
     if biochemical_recurrence_match:
-        states.append({"Disease State": "biochemical recurrence", "Start Date": biochemical_recurrence_match.group(1), "End Date": ""})
+        states.append({"Disease State": "biochemical recurrence", "Start Date": biochemical_recurrence_match.group(1)})
     return states
 
 def extract_procedures(text):
     procedures = []
     procedure_matches = re.findall(r"Following ([\w\s]+) in ([\w\s]+ \d{4})", text)
     for match in procedure_matches:
-        procedures.append({"Procedure": match[0], "Date": match[1], "Description": ""})
+        procedures.append({"Procedure": match[0], "Date": match[1]})
     return procedures
 
 def extract_treatments(text):
     treatments = []
     treatment_matches = re.findall(r"([A-Za-z\s]+) therapy commenced in ([\w\s]+ \d{4}) and concluded in ([\w\s]+ \d{4})", text)
     for match in treatment_matches:
-        treatments.append({"Treatment": match[0] + " therapy", "Start Date": match[1], "End Date": match[2], "Description": ""})
+        treatments.append({"Treatment": match[0] + " therapy", "Start Date": match[1], "End Date": match[2]})
     hormonal_therapy_matches = re.findall(r"hormonal therapy with ([\w\s]+) injections every 3 months until ([\w\s]+ \d{4})", text)
     for match in hormonal_therapy_matches:
-        treatments.append({"Treatment": "hormonal therapy", "Start Date": "", "End Date": match[1], "Description": match[0] + " injections every 3 months"})
+        treatments.append({"Treatment": "hormonal therapy", "End Date": match[1], "Description": match[0] + " injections every 3 months"})
     current_treatment_match = re.search(r"Current treatment includes second-line hormonal therapy with ([\w\s]+)", text)
     if current_treatment_match:
-        treatments.append({"Treatment": "second-line hormonal therapy", "Start Date": "", "End Date": "", "Description": current_treatment_match.group(1)})
+        treatments.append({"Treatment": "second-line hormonal therapy", "Description": current_treatment_match.group(1)})
     return treatments
 
 def extract_lab_results(text):
@@ -83,7 +88,7 @@ def extract_lab_results(text):
         results.append({"Lab Result": "PSA levels", "Date": match[1], "Value": match[0] + " ng/mL"})
     cbc_match = re.search(r"Complete blood count from ([\w\s]+ \d{4}) showed WBC: ([\d\.]+), RBC: ([\d\.]+), Platelets: (\d+)", text)
     if cbc_match:
-        results.append({"Lab Result": "Complete blood count", "Date": cbc_match.group(1), "Value": "WBC: " + cbc_match.group(2) + ", RBC: " + cbc_match.group(3) + ", Platelets: " + cbc_match.group(4)})
+        results.append({"Lab Result": "Complete blood count", "Date": cbc_match.group(1), "Value": f"WBC: {cbc_match.group(2)}, RBC: {cbc_match.group(3)}, Platelets: {cbc_match.group(4)}"})
     return results
 
 def extract_imaging_studies(text):
@@ -97,7 +102,7 @@ def extract_medications(text):
     medications = []
     medication_matches = re.findall(r"Current medications include ([\w\s]+) starting ([\w\s]+ \d{4}), with a daily dosage of (\d+ mg)", text)
     for match in medication_matches:
-        medications.append({"Medication": match[0], "Start Date": match[1], "End Date": "", "Dosage": match[2]})
+        medications.append({"Medication": match[0], "Start Date": match[1], "Dosage": match[2]})
     return medications
 
 def process_input(text):
@@ -158,14 +163,14 @@ def convert_to_text(structured_data):
         disease_states = structured_data['Disease States']
         for state in disease_states:
             for key, value in state.items():
-                text_data += f"  - {key}: {value}\n"
+                                text_data += f"  - {key}: {value}\n"
 
     if "Procedures" in structured_data:
         text_data += "Procedures:\n"
         procedures = structured_data['Procedures']
         for procedure in procedures:
             for key, value in procedure.items():
-                                text_data += f"  - {key}: {value}\n"
+                text_data += f"  - {key}: {value}\n"
 
     if "Treatments" in structured_data:
         text_data += "Treatments:\n"
@@ -241,4 +246,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
